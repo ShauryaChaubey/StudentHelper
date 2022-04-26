@@ -5,9 +5,13 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
+import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.*;
 import android.webkit.MimeTypeMap;
 import android.widget.*;
@@ -16,6 +20,10 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import com.google.android.gms.vision.Frame;
+import com.google.android.gms.vision.text.TextBlock;
+import com.google.android.gms.vision.text.TextRecognizer;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -23,6 +31,8 @@ import com.mtah.summerizer.db.SummaryDBHelper;
 import com.mtah.summerizer.model.Summary;
 import com.mtah.tools.Grapher;
 import com.mtah.tools.PreProcessor;
+import com.theartofdev.edmodo.cropper.CropImage;
+import com.theartofdev.edmodo.cropper.CropImageView;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -47,6 +57,9 @@ public class HomeActivity extends AppCompatActivity {
     public static Grapher grapher;
     private SummaryDBHelper dbHelper;
     AsyncTask<Void,Void, String> load;
+    Bitmap bitmap;
+    private static final int REQUEST_CAMERA_CODE = 100;
+
 
 
     @Override
@@ -65,6 +78,7 @@ public class HomeActivity extends AppCompatActivity {
         dbHelper = new SummaryDBHelper(this);
 
         FloatingActionButton fab = findViewById(R.id.fab);
+        FloatingActionButton fabcapture = findViewById(R.id.fabCapture);
         fab.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.fileplus));
         fab.setOnClickListener(view -> {
             if (ContextCompat.checkSelfPermission(HomeActivity.this,
@@ -81,15 +95,32 @@ public class HomeActivity extends AppCompatActivity {
             }
         });
 
-        Button testButton = findViewById(R.id.testButton);
-        testButton.setOnClickListener(v -> {
-            Log.i(TAG, "onClick: Read test doc");
-            editTextView.setText(readText(getApplicationContext().getResources().openRawResource(R.raw.amin)));
+        fabcapture.setOnClickListener(view -> {
+
+            if(ContextCompat.checkSelfPermission(HomeActivity.this,
+                    Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                CropImage.activity()
+                        .setGuidelines(CropImageView.Guidelines.ON)
+                        .start(HomeActivity.this);
+            }
+            else{
+                ActivityCompat.requestPermissions(HomeActivity.this, new String[]{
+                        Manifest.permission.CAMERA
+                }, REQUEST_CAMERA_CODE);
+            }
         });
+
+//        Button testButton = findViewById(R.id.captureButton);
+//        testButton.setOnClickListener(v -> {
+//            Log.i(TAG, "onClick: Read test doc");
+//            editTextView.setText(readText(getApplicationContext().getResources().openRawResource(R.raw.amin)));
+//        });
 
         summaryButton.setOnClickListener(v -> {
             if (!editTextView.getText().toString().isEmpty()){
                 Intent summaryIntent = new Intent(HomeActivity.this, SummaryActivity.class);
+                Log.i("document text", documentText);
+                Log.i("edittext text", editTextView.getText().toString());
                 summaryIntent.putExtra("docText", editTextView.getText().toString());
                 startActivity(summaryIntent);
             } else{
@@ -204,11 +235,25 @@ public class HomeActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (data != null) {
+        if(requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE){
+
+            CropImage.ActivityResult result = CropImage.getActivityResult(data);
+            if(resultCode == RESULT_OK)
+            {
+                Uri resultURI = result.getUri();
+                try {
+                    bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), resultURI);
+                    getTextFromImage(bitmap);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        else if (data != null) {
             if (data.getData() != null) {
                 String mimeType = getContentResolver().getType(data.getData());
                 String extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType);
-                Log.i(TAG, "onActivityResult: File Extention = " + extension);
+                Log.i(TAG, "onActivityResult: File Extension = " + extension);
                 if (extension != null && extension.equals("txt")) {
                     try {
                         documentText = readText(getContentResolver().openInputStream(data.getData()));
@@ -295,6 +340,32 @@ public class HomeActivity extends AppCompatActivity {
             AlertDialog openDialog = builder.create();
             openDialog.setView(listView, 16, 16, 16, 16);
             openDialog.show();
+        }
+    }
+
+    // function to extract text from image
+    private void  getTextFromImage(Bitmap bitmap)
+    {
+        TextRecognizer recognizer = new TextRecognizer.Builder(this).build();
+        if(!recognizer.isOperational())
+        {
+            Toast.makeText(HomeActivity.this, "Error Occurred", Toast.LENGTH_SHORT).show();
+        }
+        else
+        {
+            Frame frame = new Frame.Builder().setBitmap(bitmap).build();
+            SparseArray<TextBlock> textBlockSparseArray = recognizer.detect(frame);
+            StringBuilder stringBuilder = new StringBuilder();
+            int i;
+            for(i = 0; i < textBlockSparseArray.size(); i++)
+            {
+                TextBlock textBlock = textBlockSparseArray.valueAt(i);
+                stringBuilder.append(textBlock.getValue());
+                stringBuilder.append("\n");
+            }
+            documentText = stringBuilder.toString();
+
+            editTextView.setText(stringBuilder.toString());
         }
     }
 
