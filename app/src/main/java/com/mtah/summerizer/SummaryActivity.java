@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -71,6 +72,7 @@ public class SummaryActivity extends AppCompatActivity implements SaveDialog.Sav
             summaryText = textIntent.getStringExtra("open");
         }
         summaryTextView.setText(summaryText);
+        summaryTextView.setMovementMethod(new ScrollingMovementMethod());
 
     }
 
@@ -134,5 +136,8 @@ public class SummaryActivity extends AppCompatActivity implements SaveDialog.Sav
     private void saveSummary (String summaryName, String summaryText) throws Exception{
         dbHelper.saveSummary(summaryName, summaryText);
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
+    }
+
+    public void shareSummary(View view) {
     }
 }
