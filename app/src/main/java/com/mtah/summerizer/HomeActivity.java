@@ -41,11 +41,9 @@ import java.util.List;
 
 public class HomeActivity extends AppCompatActivity {
     private static final String TAG = "HomeActivity";
-    private int STORAGE_PERMISSION_CODE = 1;
-    private int FILE_REQUEST_CODE = 100;
+    private final int STORAGE_PERMISSION_CODE = 1;
+    private final int FILE_REQUEST_CODE = 100;
 
-    private ArrayAdapter adapter;
-    private ArrayList<String> summaryNameList;
     private HashMap<String, String> summaryMap;
 
     private EditText editTextView;
@@ -78,7 +76,7 @@ public class HomeActivity extends AppCompatActivity {
         dbHelper = new SummaryDBHelper(this);
 
         FloatingActionButton fab = findViewById(R.id.fab);
-        FloatingActionButton fabcapture = findViewById(R.id.fabCapture);
+        FloatingActionButton fabCapture = findViewById(R.id.fabCapture);
         fab.setImageDrawable(ContextCompat.getDrawable(HomeActivity.this, R.drawable.fileplus));
         fab.setOnClickListener(view -> {
             if (ContextCompat.checkSelfPermission(HomeActivity.this,
@@ -95,7 +93,7 @@ public class HomeActivity extends AppCompatActivity {
             }
         });
 
-        fabcapture.setOnClickListener(view -> {
+        fabCapture.setOnClickListener(view -> {
 
             if(ContextCompat.checkSelfPermission(HomeActivity.this,
                     Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
@@ -110,11 +108,6 @@ public class HomeActivity extends AppCompatActivity {
             }
         });
 
-//        Button testButton = findViewById(R.id.captureButton);
-//        testButton.setOnClickListener(v -> {
-//            Log.i(TAG, "onClick: Read test doc");
-//            editTextView.setText(readText(getApplicationContext().getResources().openRawResource(R.raw.amin)));
-//        });
 
         summaryButton.setOnClickListener(v -> {
             if (!editTextView.getText().toString().isEmpty()){
@@ -178,18 +171,18 @@ public class HomeActivity extends AppCompatActivity {
     public String  readText(InputStream input){
 
         InputStreamReader reader = new InputStreamReader(input);
-        BufferedReader buffreader = new BufferedReader(reader);
+        BufferedReader bufferedReader = new BufferedReader(reader);
         String line;
         StringBuilder text = new StringBuilder();
 
         try {
-            while (( line = buffreader.readLine()) != null) {
+            while (( line = bufferedReader.readLine()) != null) {
                 text.append(line);
                 text.append('\n');
             }
             input.close();
             reader.close();
-            buffreader.close();
+            bufferedReader.close();
         } catch (IOException e) {
             Log.i(TAG, "onClick: Exception: " + e.getMessage());
         }
@@ -316,8 +309,8 @@ public class HomeActivity extends AppCompatActivity {
 
     // display dialog with a list of all saved summaries
     private void showOpenDialog (){
-        summaryNameList = new ArrayList<>(summaryMap.keySet());
-        adapter = new ArrayAdapter(this,
+        ArrayList<String> summaryNameList = new ArrayList<>(summaryMap.keySet());
+        ArrayAdapter adapter = new ArrayAdapter(this,
                 R.layout.support_simple_spinner_dropdown_item,
                 summaryNameList);
         listView.setPadding(8,8,8,8);

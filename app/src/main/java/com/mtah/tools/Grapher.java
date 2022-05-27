@@ -11,11 +11,10 @@ import java.util.Comparator;
 public class Grapher {
     SimpleWeightedGraph<SentenceVertex, DefaultWeightedEdge> graph;
 
-    //score calc was a bit confusing had to take weight into account so could not use JgraphT pagerank func
 
     private final String TAG = "INFO";
     private final double DAMPING_FACTOR = 0.85;
-    private final double THRESHHOLD = 0.0001;
+    private final double THRESHOLD = 0.0001;
     public Grapher(){
         graph = new SimpleWeightedGraph<SentenceVertex, DefaultWeightedEdge>(DefaultWeightedEdge.class);
     }
@@ -53,9 +52,9 @@ public class Grapher {
 
         //calc similarty while ignoring "O's"
         double counter = 0;
-        for (int i = 0; i < vertex1Tokens.length; i++) {
-            for (int j = 0; j < vertex2Tokens.length; j++) {
-                if(vertex1Tokens[i].equals(vertex2Tokens[j]) && vertex1Tokens[i].length()>1 ){
+        for (String vertex1Token : vertex1Tokens) {
+            for (String vertex2Token : vertex2Tokens) {
+                if (vertex1Token.equals(vertex2Token) && vertex1Token.length() > 1) {
                     // && !vertex1Tokens[i].equals("O")){
                     counter++;
                 }
@@ -92,7 +91,7 @@ public class Grapher {
         double error = 1;
         int itr = 0;
 
-        while (error > THRESHHOLD){
+        while (error > THRESHOLD){
             for (SentenceVertex vertex: graph.vertexSet()){
                 double newScore = calcScore(vertex);
                 double lastScore = vertex.getScore();

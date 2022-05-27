@@ -1,6 +1,9 @@
 package com.mtah.summerizer;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
@@ -11,6 +14,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+
 import android.os.Bundle;
 import com.mtah.summerizer.db.SummaryDBHelper;
 import com.mtah.tools.Grapher;
@@ -20,13 +25,10 @@ import java.util.ArrayList;
 
 public class SummaryActivity extends AppCompatActivity implements SaveDialog.SaveDialogListener {
     private static final String TAG = "SummaryActivity";
-    private String documentText;
-    private final String EMPTY_MESSAGE = "Summary not available";
-    private PreProcessor preProcessor = HomeActivity.preProcessor;
-    private Grapher grapher = HomeActivity.grapher;
+    private final PreProcessor preProcessor = HomeActivity.preProcessor;
+    private final Grapher grapher = HomeActivity.grapher;
     private Button saveSummaryButton;
     private String summaryText;
-    private String saveSummaryName;
     private SummaryDBHelper dbHelper;
     public SQLiteDatabase summaryDatabase;
     private Intent textIntent;
@@ -51,16 +53,20 @@ public class SummaryActivity extends AppCompatActivity implements SaveDialog.Sav
 
         TextView summaryTextView = findViewById(R.id.summaryTextView);
         textIntent = getIntent();
+        Log.i(TAG, textIntent.toString());
         if (textIntent.hasExtra("docText")) {
-            documentText = textIntent.getStringExtra("docText");
+            String documentText = textIntent.getStringExtra("docText");
             Log.i(TAG, "onCreate: DOC TEXT:" + documentText);
 
+            String EMPTY_MESSAGE = "Summary not available";
             if (documentText == null || documentText.isEmpty()) {
-                Toast.makeText(this, "Not document text available", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "No document text available", Toast.LENGTH_SHORT).show();
                 summaryTextView.setText(EMPTY_MESSAGE);
                 saveSummaryButton.setEnabled(false);
             } else {
                 summaryText = summaryTool(documentText).replaceAll("    ", " ");
+
+                Log.i("summary Text", summaryText);
             }
             if (summaryText == null || summaryText.isEmpty()) {
                 summaryTextView.setText(EMPTY_MESSAGE);
@@ -77,31 +83,28 @@ public class SummaryActivity extends AppCompatActivity implements SaveDialog.Sav
     }
 
 
-
-    //summarize the text to the least between  1/4 th of the size or 15 sentences
+    //summarize the text to 35 % of the original text size
     private String summaryTool(String documentText) {
         StringBuilder text = new StringBuilder();
+        text.setLength(0);
+        Log.i("documentText: ", documentText);
         String[] sentences = preProcessor.extractSentences(documentText.trim());
-        Log.i(TAG, "summerizedDocument: No of sentences: " + sentences.length);
+        Log.i("Sentence", sentences[0]);
+        Log.i(TAG, "summarizedDocument: No of sentences: " + sentences.length);
         ArrayList<Grapher.SentenceVertex> sentenceVertices = grapher.sortSentences(sentences, preProcessor.tokenizeSentences(sentences));
-        int summarySize = ((sentences.length * 25) / 100);
-        int maxLenght = 15;
+        int summarySize = ((sentences.length * 35) / 100);
         int counter = 0;
         for (int i = 0; i < summarySize; i++) {
-            if (i < maxLenght) {
-
                 text.append(sentenceVertices.get(i).getSentence().trim());
                 text.append(" ");
                 counter++;
-            } else
-                break;
         }
-        Log.i(TAG, "summerizedDocument: Summary length = " + counter + " sentences");
+        Log.i(TAG, "summarizedDocument: Summary length = " + counter + " sentences");
         Log.i(TAG, "\nSUMMARY:\n" + text.toString());
         return text.toString();
     }
 
-    //Dialog for summary name input for saving the sumarry
+    //Dialog for summary name input for saving the summary
     private void openSaveDialog(){
         if (textIntent.hasExtra("open")){
             Toast.makeText(this, "This has already been saved", Toast.LENGTH_SHORT).show();
@@ -113,13 +116,12 @@ public class SummaryActivity extends AppCompatActivity implements SaveDialog.Sav
     @Override
     public void applyText(String name) {
         //summary save name
-        saveSummaryName = name;
-        Log.i(TAG, "applyText: Save name: " + saveSummaryName);
+        Log.i(TAG, "applyText: Save name: " + name);
 
         Log.i(TAG, "onClick: GOT HERE, SAVING");
-        if (saveSummaryName != null && !saveSummaryName.isEmpty()) {
+        if (name != null && !name.isEmpty()) {
             try {
-                saveSummary(saveSummaryName, summaryText);
+                saveSummary(name, summaryText);
                 saveSummaryButton.setEnabled(false);
                 Log.i(TAG, "onClick: Save successful");
                 Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
@@ -132,12 +134,31 @@ public class SummaryActivity extends AppCompatActivity implements SaveDialog.Sav
         }
     }
 
-    //save a summary to database
+    // save a summary to database
     private void saveSummary (String summaryName, String summaryText) throws Exception{
         dbHelper.saveSummary(summaryName, summaryText);
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
     }
 
+    // share summary on other apps
     public void shareSummary(View view) {
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("text/plain");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, summaryText);
+        Intent chooser = Intent.createChooser(shareIntent, "Share");
+        startActivity(chooser);
+    }
+
+    // copy the summary to clipboard
+    public void copySummary(View view) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("summary of text", summaryText);
+        Toast.makeText(SummaryActivity.this, "Summary copied!", Toast.LENGTH_SHORT).show();
+        clipboard.setPrimaryClip(clip);
+    }
+
+    public  void goBack(View view)
+    {
+        finish();
     }
 }
